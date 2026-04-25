@@ -237,17 +237,20 @@ task.spawn(function()
             -- MENCARI SECARA MENYELURUH (Untuk menghindari kegagalan jika developer merubah lokasi foldernya)
             for _, desc in pairs(playerGui:GetDescendants()) do
                 if desc:IsA("TextLabel") then
-                    local text = string.lower(desc.Text)
+                    -- Gunakan ContentText untuk mengabaikan tag HTML/RichText
+                    local rawText = (desc.ContentText and desc.ContentText ~= "") and desc.ContentText or desc.Text
+                    local textLower = string.lower(rawText)
+                    
                     -- Cek Harga
-                    if string.find(text, "current price") then
-                        local extracted = string.match(desc.Text, "%$%s*(%d+)")
+                    if string.find(textLower, "current price") then
+                        local extracted = string.match(rawText, "%$%s*(%d+)")
                         if extracted then
                             currentPrice = tonumber(extracted)
                         end
                     end
                     -- Cek Waktu
-                    if string.find(text, "next price") then
-                        local extractedTime = string.match(desc.Text, "%d+:%d+")
+                    if string.find(textLower, "next price") then
+                        local extractedTime = string.match(rawText, "%d+:%d+")
                         if extractedTime then
                             timeText = extractedTime
                         end
@@ -266,7 +269,7 @@ task.spawn(function()
             else
                 MarketInfo:Set({
                     Title = "📊 Status Pasar Saat Ini",
-                    Content = "Sedang mencari data harga...\n(Pastikan menu Sell sedang terbuka di layar)"
+                    Content = "Sedang menscan UI game...\n(Tunggu beberapa detik)"
                 })
             end
         end)
