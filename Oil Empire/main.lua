@@ -229,33 +229,46 @@ task.spawn(function()
     while true do
         task.wait(1)
         
-        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if not playerGui then continue end
-        local sellGasUI = playerGui:FindFirstChild("Main") and playerGui.Main:FindFirstChild("SellGas")
-        if not sellGasUI then continue end
-        
-        local currentPriceLabel = sellGasUI:FindFirstChild("CurrentPrice")
-        if not currentPriceLabel then continue end
-        
-        -- Dapatkan Harga
-        local priceValueStr = string.match(currentPriceLabel.Text, "%$(%d+)")
-        local currentPrice = tonumber(priceValueStr) or 0
-        
-        -- Dapatkan Waktu Reset (Mencari teks yang mengandung "Next Price")
+        local currentPrice = 0
         local timeText = "00:00"
-        for _, desc in pairs(sellGasUI:GetDescendants()) do
-            if desc:IsA("TextLabel") and string.find(string.lower(desc.Text), "next price") then
-                timeText = string.match(desc.Text, "%d+:%d+") or "00:00"
-                break
+        
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if playerGui then
+            -- MENCARI SECARA MENYELURUH (Untuk menghindari kegagalan jika developer merubah lokasi foldernya)
+            for _, desc in pairs(playerGui:GetDescendants()) do
+                if desc:IsA("TextLabel") then
+                    local text = string.lower(desc.Text)
+                    -- Cek Harga
+                    if string.find(text, "current price") then
+                        local extracted = string.match(desc.Text, "%$%s*(%d+)")
+                        if extracted then
+                            currentPrice = tonumber(extracted)
+                        end
+                    end
+                    -- Cek Waktu
+                    if string.find(text, "next price") then
+                        local extractedTime = string.match(desc.Text, "%d+:%d+")
+                        if extractedTime then
+                            timeText = extractedTime
+                        end
+                    end
+                end
             end
         end
         
         -- Update Tampilan di GUI
         pcall(function()
-            MarketInfo:Set({
-                Title = "📊 Status Pasar Saat Ini",
-                Content = "Harga Minyak: $" .. currentPrice .. "\nReset Harga Dalam: " .. timeText
-            })
+            if currentPrice > 0 then
+                MarketInfo:Set({
+                    Title = "📊 Status Pasar Saat Ini",
+                    Content = "Harga Minyak: $" .. currentPrice .. "\nReset Harga Dalam: " .. timeText
+                })
+            else
+                MarketInfo:Set({
+                    Title = "📊 Status Pasar Saat Ini",
+                    Content = "Sedang mencari data harga...\n(Pastikan menu Sell sedang terbuka di layar)"
+                })
+            end
         end)
         
         -- Jika Auto Sell dimatikan, berhenti di sini (jangan lanjut ke script jual)
