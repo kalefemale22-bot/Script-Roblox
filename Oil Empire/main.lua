@@ -63,8 +63,12 @@ StealTab:AddSlider({
     end    
 })
 
--- TAB 3: AUTO SELL
+-- TAB 3: AUTO SELL & PASAR
 local SellTab = Window:MakeTab({Name = "Auto Sell", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+
+-- Informasi Pasar (Akan di-update oleh script setiap detik)
+local MarketInfo = SellTab:AddParagraph("📊 Status Pasar Saat Ini", "Memuat data dari server...\n(Pastikan menu jualan di game pernah dibuka sekali)")
+
 SellTab:AddToggle({
     Name = "Aktifkan Smart Auto Sell",
     Default = false,
@@ -188,11 +192,9 @@ task.spawn(function()
                 end
                 
                 if prompt then
-                    -- BACA ANGKA JUMLAH MINYAK DARI TEKS ("Steal (20000 gasoline)")
                     local amountStr = string.match(prompt.ActionText, "%d+") or string.match(prompt.ObjectText, "%d+")
                     local stealAmount = tonumber(amountStr) or 0
                     
-                    -- HANYA CURI JIKA JUMLAH MINYAK MEMENUHI TARGET (Slider Minimal)
                     if stealAmount >= _G.MinStealAmount then
                         local promptPart = prompt.Parent
                         if promptPart:IsA("Attachment") then promptPart = promptPart.Parent end
@@ -220,13 +222,12 @@ task.spawn(function()
     end
 end)
 
--- 💰 THREAD 3: AUTO SELL
+-- 💰 THREAD 3: AUTO SELL & PASAR MONITOR
 task.spawn(function()
     local lastSellTime = 0
     
     while true do
         task.wait(1)
-        if not _G.AutoSell then continue end
         
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if not playerGui then continue end
@@ -236,10 +237,29 @@ task.spawn(function()
         local currentPriceLabel = sellGasUI:FindFirstChild("CurrentPrice")
         if not currentPriceLabel then continue end
         
+        -- Dapatkan Harga
         local priceValueStr = string.match(currentPriceLabel.Text, "%$(%d+)")
-        if not priceValueStr then continue end
+        local currentPrice = tonumber(priceValueStr) or 0
         
-        local currentPrice = tonumber(priceValueStr)
+        -- Dapatkan Waktu Reset (Mencari teks yang mengandung "Next Price")
+        local timeText = "00:00"
+        for _, desc in pairs(sellGasUI:GetDescendants()) do
+            if desc:IsA("TextLabel") and string.find(string.lower(desc.Text), "next price") then
+                timeText = string.match(desc.Text, "%d+:%d+") or "00:00"
+                break
+            end
+        end
+        
+        -- Update Tampilan di GUI
+        pcall(function()
+            MarketInfo:Set({
+                Title = "📊 Status Pasar Saat Ini",
+                Content = "Harga Minyak: $" .. currentPrice .. "\nReset Harga Dalam: " .. timeText
+            })
+        end)
+        
+        -- Jika Auto Sell dimatikan, berhenti di sini (jangan lanjut ke script jual)
+        if not _G.AutoSell then continue end
         
         -- JUAL HANYA JIKA HARGA MENCAPAI TARGET GUI
         if currentPrice >= _G.MinSellPrice and (tick() - lastSellTime > 15) then
