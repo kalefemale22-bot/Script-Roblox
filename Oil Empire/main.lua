@@ -120,9 +120,12 @@ local sellRemote = rep:WaitForChild("Packages"):WaitForChild("Knit"):WaitForChil
 
 local sellPrompt = nil
 for _, desc in pairs(workspace:GetDescendants()) do
-    if desc:IsA("ProximityPrompt") and string.find(string.lower(desc.ActionText .. " " .. desc.ObjectText), "gasoline") then
-        sellPrompt = desc
-        break
+    if desc:IsA("ProximityPrompt") then
+        local fullText = string.lower(desc.ActionText .. " " .. desc.ObjectText)
+        if string.find(fullText, "sell") and string.find(fullText, "gasoline") then
+            sellPrompt = desc
+            break
+        end
     end
 end
 
