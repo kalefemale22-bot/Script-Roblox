@@ -1,12 +1,13 @@
 -- ============================================================
 -- KxK Script Hub | Universal Loader
--- Dibuat oleh: KxK Script
+-- Key System: Platoboost + Linkvertise (24 Jam Expiry)
 -- ============================================================
 
 local PLATOBOOST_ID = "MASUKKAN_ID_PLATOBOOST_ANDA" -- Ganti dengan ID Project Platoboost Anda
+local KEY_DURATION_HOURS = 24 -- Durasi key (jam)
 
 -- ============================================================
--- GITHUB BASE URL (Jangan diubah)
+-- GITHUB BASE URL
 -- ============================================================
 local BASE_URL = "https://raw.githubusercontent.com/kalefemale22-bot/Script-Roblox/main/"
 
@@ -15,219 +16,264 @@ local BASE_URL = "https://raw.githubusercontent.com/kalefemale22-bot/Script-Robl
 -- Format: [PlaceId] = "NamaFolder/namafile.lua"
 -- ============================================================
 local SUPPORTED_GAMES = {
-    -- Oil Empire
     [2534724072] = "Oil Empire/main.lua",
-    
-    -- Tambahkan game lain di sini nanti:
-    -- [PLACE_ID_GAME_BARU] = "Nama Folder Game/main.lua",
+    -- Tambahkan game lain di sini:
+    -- [PLACE_ID] = "Nama Folder/main.lua",
 }
 
 -- ============================================================
--- SISTEM KEY (PLATOBOOST)
+-- SISTEM PENYIMPANAN KEY + TIMESTAMP (24 JAM)
 -- ============================================================
-local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local HttpService  = game:GetService("HttpService")
+local Players      = game:GetService("Players")
+local LocalPlayer  = Players.LocalPlayer
+local KEY_FILE     = "KxKScriptKey.json"
 
--- Cek apakah key sudah disimpan sebelumnya
-local savedKey = ""
-pcall(function()
-    savedKey = readfile("KxKScriptKey.txt")
-end)
+local function loadSavedData()
+    local ok, raw = pcall(readfile, KEY_FILE)
+    if not ok or not raw or raw == "" then return nil end
+    local ok2, data = pcall(HttpService.JSONDecode, HttpService, raw)
+    if ok2 and data then return data end
+    return nil
+end
 
+local function saveKeyData(key)
+    local data = {key = key, savedAt = os.time()}
+    pcall(writefile, KEY_FILE, HttpService:JSONEncode(data))
+end
+
+local function isKeyExpired(data)
+    if not data or not data.savedAt then return true end
+    local elapsed = os.time() - data.savedAt
+    return elapsed >= (KEY_DURATION_HOURS * 3600)
+end
+
+local function getTimeLeft(data)
+    if not data or not data.savedAt then return "0j 0m" end
+    local elapsed   = os.time() - data.savedAt
+    local remaining = math.max(0, (KEY_DURATION_HOURS * 3600) - elapsed)
+    local hours     = math.floor(remaining / 3600)
+    local mins      = math.floor((remaining % 3600) / 60)
+    return hours .. "j " .. mins .. "m"
+end
+
+-- ============================================================
+-- CEK KEY KE SERVER PLATOBOOST
+-- ============================================================
 local function checkKey(key)
-    local success, result = pcall(function()
-        local response = HttpService:GetAsync(
-            "https://api.platoboost.com/v1/authenticate?whitelist=" .. PLATOBOOST_ID .. "&key=" .. key
-        )
+    local ok, result = pcall(function()
+        local url = "https://api.platoboost.com/v1/authenticate?whitelist=" .. PLATOBOOST_ID .. "&key=" .. key
+        local response = game:HttpGet(url)
         local data = HttpService:JSONDecode(response)
         return data.valid == true
     end)
-    if success then
-        return result
-    end
-    return false
+    return ok and result
 end
 
-local function showKeyUI()
-    -- Buat UI input key yang sederhana dan rapi
+-- ============================================================
+-- UI KEY SYSTEM
+-- ============================================================
+local function showKeyUI(savedData)
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "KxKKeySystem"
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = game:GetService("CoreGui")
 
-    local blur = Instance.new("Frame")
-    blur.Size = UDim2.new(1, 0, 1, 0)
-    blur.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    blur.BackgroundTransparency = 0.5
-    blur.BorderSizePixel = 0
-    blur.Parent = screenGui
+    -- Overlay gelap
+    local overlay = Instance.new("Frame")
+    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    overlay.BackgroundTransparency = 0.45
+    overlay.BorderSizePixel = 0
+    overlay.Parent = screenGui
 
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 420, 0, 280)
-    frame.Position = UDim2.new(0.5, -210, 0.5, -140)
-    frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-    frame.BorderSizePixel = 0
-    frame.Parent = screenGui
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+    -- Kartu utama
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(0, 440, 0, 310)
+    card.Position = UDim2.new(0.5, -220, 0.5, -155)
+    card.BackgroundColor3 = Color3.fromRGB(13, 13, 18)
+    card.BorderSizePixel = 0
+    card.Parent = screenGui
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 14)
 
-    -- Garis atas berwarna
-    local topBar = Instance.new("Frame")
-    topBar.Size = UDim2.new(1, 0, 0, 4)
-    topBar.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
-    topBar.BorderSizePixel = 0
-    topBar.Parent = frame
-    Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 12)
+    -- Garis atas (aksen warna)
+    local accent = Instance.new("Frame")
+    accent.Size = UDim2.new(1, 0, 0, 4)
+    accent.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+    accent.BorderSizePixel = 0
+    accent.ZIndex = 2
+    accent.Parent = card
+    Instance.new("UICorner", accent).CornerRadius = UDim.new(0, 14)
 
+    -- Judul
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 50)
-    title.Position = UDim2.new(0, 0, 0, 10)
+    title.Size = UDim2.new(1, 0, 0, 45)
+    title.Position = UDim2.new(0, 0, 0, 14)
     title.BackgroundTransparency = 1
-    title.Text = "🔑 KxK Script | Key System"
-    title.TextColor3 = Color3.fromRGB(255, 170, 0)
-    title.TextSize = 20
+    title.Text = "🔑  KxK Script — Key System"
+    title.TextColor3 = Color3.fromRGB(255, 165, 0)
+    title.TextSize = 19
     title.Font = Enum.Font.GothamBold
-    title.Parent = frame
+    title.Parent = card
 
-    local subtitle = Instance.new("TextLabel")
-    subtitle.Size = UDim2.new(1, -40, 0, 30)
-    subtitle.Position = UDim2.new(0, 20, 0, 55)
-    subtitle.BackgroundTransparency = 1
-    subtitle.Text = "Dapatkan Key gratis di link di bawah ini:"
-    subtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
-    subtitle.TextSize = 14
-    subtitle.Font = Enum.Font.Gotham
-    subtitle.TextXAlignment = Enum.TextXAlignment.Left
-    subtitle.Parent = frame
+    -- Badge 24 jam
+    local badge = Instance.new("TextLabel")
+    badge.Size = UDim2.new(0, 90, 0, 22)
+    badge.Position = UDim2.new(0.5, -45, 0, 58)
+    badge.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+    badge.BackgroundTransparency = 0.75
+    badge.Text = "⏱  24 Jam / Key"
+    badge.TextColor3 = Color3.fromRGB(255, 200, 100)
+    badge.TextSize = 12
+    badge.Font = Enum.Font.GothamBold
+    badge.Parent = card
+    Instance.new("UICorner", badge).CornerRadius = UDim.new(0, 6)
 
-    local linkLabel = Instance.new("TextLabel")
-    linkLabel.Size = UDim2.new(1, -40, 0, 25)
-    linkLabel.Position = UDim2.new(0, 20, 0, 85)
-    linkLabel.BackgroundTransparency = 1
-    linkLabel.Text = "🔗 platoboost.com/whitelist/" .. PLATOBOOST_ID
-    linkLabel.TextColor3 = Color3.fromRGB(100, 180, 255)
-    linkLabel.TextSize = 13
-    linkLabel.Font = Enum.Font.Gotham
-    linkLabel.TextXAlignment = Enum.TextXAlignment.Left
-    linkLabel.Parent = frame
+    -- Instruksi
+    local info = Instance.new("TextLabel")
+    info.Size = UDim2.new(1, -40, 0, 20)
+    info.Position = UDim2.new(0, 20, 0, 90)
+    info.BackgroundTransparency = 1
+    info.Text = "Dapatkan Key gratis (berlaku 24 jam) di:"
+    info.TextColor3 = Color3.fromRGB(170, 170, 170)
+    info.TextSize = 13
+    info.Font = Enum.Font.Gotham
+    info.TextXAlignment = Enum.TextXAlignment.Left
+    info.Parent = card
 
+    -- Link Platoboost
+    local link = Instance.new("TextLabel")
+    link.Size = UDim2.new(1, -40, 0, 22)
+    link.Position = UDim2.new(0, 20, 0, 112)
+    link.BackgroundTransparency = 1
+    link.Text = "🔗  platoboost.com/whitelist/" .. PLATOBOOST_ID
+    link.TextColor3 = Color3.fromRGB(90, 170, 255)
+    link.TextSize = 13
+    link.Font = Enum.Font.Gotham
+    link.TextXAlignment = Enum.TextXAlignment.Left
+    link.Parent = card
+
+    -- Kotak input key
     local inputBg = Instance.new("Frame")
-    inputBg.Size = UDim2.new(1, -40, 0, 45)
-    inputBg.Position = UDim2.new(0, 20, 0, 130)
-    inputBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    inputBg.Size = UDim2.new(1, -40, 0, 44)
+    inputBg.Position = UDim2.new(0, 20, 0, 148)
+    inputBg.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     inputBg.BorderSizePixel = 0
-    inputBg.Parent = frame
+    inputBg.Parent = card
     Instance.new("UICorner", inputBg).CornerRadius = UDim.new(0, 8)
 
     local input = Instance.new("TextBox")
     input.Size = UDim2.new(1, -20, 1, 0)
     input.Position = UDim2.new(0, 10, 0, 0)
     input.BackgroundTransparency = 1
-    input.PlaceholderText = "Masukkan Key di sini..."
-    input.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
-    input.Text = savedKey or ""
+    input.PlaceholderText = "Paste key di sini..."
+    input.PlaceholderColor3 = Color3.fromRGB(90, 90, 90)
+    input.Text = (savedData and savedData.key) or ""
     input.TextColor3 = Color3.fromRGB(255, 255, 255)
     input.TextSize = 14
     input.Font = Enum.Font.Gotham
     input.ClearTextOnFocus = false
     input.Parent = inputBg
 
+    -- Label status
     local status = Instance.new("TextLabel")
-    status.Size = UDim2.new(1, -40, 0, 25)
-    status.Position = UDim2.new(0, 20, 0, 185)
+    status.Size = UDim2.new(1, -40, 0, 22)
+    status.Position = UDim2.new(0, 20, 0, 200)
     status.BackgroundTransparency = 1
-    status.Text = ""
-    status.TextColor3 = Color3.fromRGB(255, 80, 80)
-    status.TextSize = 13
+    status.Text = savedData and ("Key lama expired. Silakan generate key baru.") or ""
+    status.TextColor3 = Color3.fromRGB(255, 100, 100)
+    status.TextSize = 12
     status.Font = Enum.Font.Gotham
     status.TextXAlignment = Enum.TextXAlignment.Left
-    status.Parent = frame
+    status.Parent = card
 
-    local submitBtn = Instance.new("TextButton")
-    submitBtn.Size = UDim2.new(1, -40, 0, 42)
-    submitBtn.Position = UDim2.new(0, 20, 0, 220)
-    submitBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
-    submitBtn.BorderSizePixel = 0
-    submitBtn.Text = "✅  Submit Key"
-    submitBtn.TextColor3 = Color3.fromRGB(10, 10, 10)
-    submitBtn.TextSize = 15
-    submitBtn.Font = Enum.Font.GothamBold
-    submitBtn.Parent = frame
-    Instance.new("UICorner", submitBtn).CornerRadius = UDim.new(0, 8)
+    -- Tombol Submit
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -40, 0, 42)
+    btn.Position = UDim2.new(0, 20, 0, 252)
+    btn.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+    btn.BorderSizePixel = 0
+    btn.Text = "✅   Submit Key"
+    btn.TextColor3 = Color3.fromRGB(10, 10, 10)
+    btn.TextSize = 15
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = card
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
 
-    local valid = false
-    local event = Instance.new("BindableEvent")
+    local done = Instance.new("BindableEvent")
+    local resultValid = false
 
-    submitBtn.MouseButton1Click:Connect(function()
+    btn.MouseButton1Click:Connect(function()
         local key = input.Text
         if key == "" then
             status.Text = "❌ Key tidak boleh kosong!"
             status.TextColor3 = Color3.fromRGB(255, 80, 80)
             return
         end
-        
-        status.Text = "⏳ Memeriksa key..."
-        status.TextColor3 = Color3.fromRGB(255, 200, 0)
-        submitBtn.Active = false
-        submitBtn.BackgroundColor3 = Color3.fromRGB(120, 80, 0)
-        
+
+        btn.Active = false
+        btn.BackgroundColor3 = Color3.fromRGB(120, 80, 0)
+        btn.Text = "⏳   Memeriksa key..."
+        status.Text = ""
+
         task.spawn(function()
-            local isValid = checkKey(key)
-            if isValid then
-                pcall(function() writefile("KxKScriptKey.txt", key) end)
+            local valid = checkKey(key)
+            if valid then
+                saveKeyData(key)
                 status.Text = "✅ Key valid! Memuat script..."
-                status.TextColor3 = Color3.fromRGB(0, 255, 100)
-                task.wait(1)
-                valid = true
-                event:Fire()
+                status.TextColor3 = Color3.fromRGB(0, 220, 100)
+                task.wait(0.8)
+                resultValid = true
+                done:Fire()
                 screenGui:Destroy()
             else
                 status.Text = "❌ Key tidak valid atau sudah expired!"
                 status.TextColor3 = Color3.fromRGB(255, 80, 80)
-                submitBtn.Active = true
-                submitBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+                btn.Active = true
+                btn.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+                btn.Text = "✅   Submit Key"
             end
         end)
     end)
 
-    event.Event:Wait()
-    event:Destroy()
-    return valid
+    done.Event:Wait()
+    done:Destroy()
+    return resultValid
 end
 
 -- ============================================================
--- ALUR UTAMA: CEK KEY LALU MUAT SCRIPT GAME
+-- ALUR UTAMA
 -- ============================================================
-local isKeyValid = false
+local savedData  = loadSavedData()
+local isValid    = false
 
--- Cek apakah ada key tersimpan yang masih valid
-if savedKey and savedKey ~= "" then
-    print("[KxK] Memeriksa key tersimpan...")
-    isKeyValid = checkKey(savedKey)
+if savedData and not isKeyExpired(savedData) then
+    -- Key masih berlaku, cek ke server sekali lagi untuk keamanan
+    print("[KxK] Key ditemukan, sisa waktu: " .. getTimeLeft(savedData))
+    isValid = checkKey(savedData.key)
+    if not isValid then
+        print("[KxK] Key ditolak server, meminta key baru...")
+    end
 end
 
--- Jika key tidak valid, tampilkan UI key
-if not isKeyValid then
-    isKeyValid = showKeyUI()
+if not isValid then
+    isValid = showKeyUI(savedData)
 end
 
--- Jika key valid, muat script sesuai game
-if isKeyValid then
-    local placeId = game.PlaceId
+if isValid then
+    local placeId    = game.PlaceId
     local scriptPath = SUPPORTED_GAMES[placeId]
-    
+
     if scriptPath then
-        print("[KxK] ✅ Key valid! Memuat script untuk PlaceId: " .. placeId)
-        local url = BASE_URL .. scriptPath
-        local success, err = pcall(function()
-            loadstring(game:HttpGet(url))()
+        print("[KxK] ✅ Memuat script untuk PlaceId: " .. tostring(placeId))
+        local ok, err = pcall(function()
+            loadstring(game:HttpGet(BASE_URL .. scriptPath))()
         end)
-        if not success then
+        if not ok then
             warn("[KxK] ❌ Gagal memuat script: " .. tostring(err))
         end
     else
-        -- Tampilkan notifikasi game belum didukung
-        warn("[KxK] Game ini (PlaceId: " .. placeId .. ") belum didukung. Hubungi developer untuk request game!")
+        warn("[KxK] Game ini (PlaceId: " .. tostring(placeId) .. ") belum didukung!")
     end
 end
