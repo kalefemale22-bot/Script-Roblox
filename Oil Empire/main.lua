@@ -262,15 +262,15 @@ task.spawn(function()
         -- Update Tampilan di GUI
         pcall(function()
             if currentPrice > 0 then
-                MarketInfo:Set({
-                    Title = "📊 Status Pasar Saat Ini",
-                    Content = "Harga Minyak: $" .. currentPrice .. "\nReset Harga Dalam: " .. timeText
-                })
+                MarketInfo:Set(
+                    "📊 Status Pasar Saat Ini",
+                    "Harga Minyak: $" .. currentPrice .. "\nReset Harga Dalam: " .. timeText
+                )
             else
-                MarketInfo:Set({
-                    Title = "📊 Status Pasar Saat Ini",
-                    Content = "Sedang menscan UI game...\n(Tunggu beberapa detik)"
-                })
+                MarketInfo:Set(
+                    "📊 Status Pasar Saat Ini",
+                    "Sedang menscan UI game...\n(Tunggu beberapa detik)"
+                )
             end
         end)
         
