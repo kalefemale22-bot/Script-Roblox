@@ -3,7 +3,7 @@
 -- Key System: Platoboost + Linkvertise (24 Jam Expiry)
 -- ============================================================
 
-local PLATOBOOST_ID = "MASUKKAN_ID_PLATOBOOST_ANDA" -- Ganti dengan ID Project Platoboost Anda
+local PLATOBOOST_ID = "24519" -- ID Platoboost Anda
 local KEY_DURATION_HOURS = 24 -- Durasi key (jam)
 
 -- ============================================================
@@ -16,7 +16,7 @@ local BASE_URL = "https://raw.githubusercontent.com/kalefemale22-bot/Script-Robl
 -- Format: [PlaceId] = "NamaFolder/namafile.lua"
 -- ============================================================
 local SUPPORTED_GAMES = {
-    [2534724072] = "Oil Empire/main.lua",
+    [107095834793267] = "Oil Empire/main.lua",
     -- Tambahkan game lain di sini:
     -- [PLACE_ID] = "Nama Folder/main.lua",
 }
